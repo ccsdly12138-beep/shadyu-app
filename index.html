@@ -30,7 +30,7 @@ padding:12px;
 border-radius:10px;
 border:none;
 margin-top:10px;
-box-sizing: border-box; /* 防止输入框超出边界 */
+box-sizing: border-box;
 }
 button{
 width:100%;
@@ -70,13 +70,12 @@ cursor:pointer;
 </div>
 
 <script>
-// ================= 核心配置 =================
+// ================= 核心配置（全局唯一，绝无重复） =================
 const supabase = window.supabase.createClient(
   "https://mtxoggmczoykokkpmsay.supabase.co", 
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eG9nZ21jem95a29ra3Btc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzQ1OTIsImV4cCI6MjA5NTk1MDU5Mn0.AhdjWcHhvcVIQ7808nPhthQipQ4sTZb0aOXljkmzR3Y"
 );
 
-// 单词
 const words = [
   "abandon", "benefit", "challenge", "develop", "efficient",
   "focus", "generate", "improve", "maintain", "strategy"
@@ -94,9 +93,7 @@ async function login(){
         return;
     }
     
-    // 自动转换为虚拟邮箱格式给后端
     const fakeEmail = `${username}@app.internal`;
-    
     document.getElementById("msg").innerText = "正在登录...";
     
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -123,9 +120,7 @@ async function signUp(){
         return;
     }
     
-    // 自动转换为虚拟邮箱格式给后端
     const fakeEmail = `${username}@app.internal`;
-    
     document.getElementById("msg").innerText = "正在注册...";
     
     const { data, error } = await supabase.auth.signUp({
@@ -161,8 +156,6 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// 页面加载时自动运行状态检查
+// 自动检查状态
 checkUser();
 </script>
-</body>
-</html>
