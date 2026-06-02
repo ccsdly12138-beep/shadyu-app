@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#111827" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>English SaaS App</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial;
+        background: #0f172a;
+        color: white;
+        display: flex;
+        justify-content: center;
+      }
+
+      .app {
+        width: 100%;
+        max-width: 420px;
+        padding: 20px;
+      }
+
+      .card {
+        background: #1f2937;
+        padding: 20px;
+        border-radius: 20px;
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 10px;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+      }
+
+      .blue {
+        background: #3b82f6;
+        color: white;
+      }
+      .green {
+        background: #22c55e;
+        color: white;
+      }
+      .gray {
+        background: #374151;
+        color: white;
+      }
+
+      .word {
+        font-size: 34px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <div class="card" id="loginBox">
+        <h3>登录</h3>
+        <input
+          id="email"
+          placeholder="输入邮箱"
+          style="width: 100%; padding: 10px"
+        />
+        <button class="blue" onclick="login()">发送登录链接</button>
+      </div>
+
+      <div class="card" id="appBox" style="display: none">
+        <div class="word" id="word">loading</div>
+
+        <button class="blue" onclick="speak()">🔊 发音</button>
+        <button class="green" onclick="rec()">🎤 跟读</button>
+        <button class="gray" onclick="nextWord()">下一个</button>
+
+        <div id="score"></div>
+      </div>
+    </div>
+
+    <script>
+      // 🔴 这里换成你的 Supabase
+      const supabase = window.supabase.createClient(
+        "YOUR_SUPABASE_URL",
+        "YOUR_SUPABASE_ANON_KEY",
+      );
+
+      // 单词
+      const words = ["abandon", "benefit", "challenge", "develop", "efficient"];
+
+      let i = 0;
+      let currentUser = null;
+
+      // ========== 登录 ==========
+      async function login() {
+        const email = document.getElementById("email").value;
+
+        await supabase.auth.signInWithOtp({ email });
+
+        alert("登录链接已发送邮箱");
+      }
+
+      // ========== 检查登录 ==========
+      async function checkUser() {
+        const { data } = await supabase.auth.getUser();
+
+        if (data.user) {
+          currentUser = data.user;
+
+          document.getElementById("loginBox").style.display = "none";
+          document.getElementById("appBox").style.display = "block";
+
+          loadWord();
+        }
+      }
+      checkUser();
+
+      // ========== 单词 ==========
+      function loadWord() {
+        document.getElementById("word").innerText = words[i];
+      }
+
+      // ========== 发音 ==========
+      function speak() {
+        let u = new SpeechSynthesisUtterance(words[i]);
+        u.lang = "en-US";
+        speechSynthesis.speak(u);
+      }
+
+      // ========== 录音 ==========
+      function rec() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let r = new SR();
+        r.lang = "en-US";
+        r.start();
+
+        document.getElementById("score").innerText = "🎤 识别中...";
+
+        r.onresult = async (e) => {
+          let said = e.results[0][0].transcript.toLowerCase();
+          let target = words[i];
+
+          let score = similar(said, target);
+
+          document.getElementById("score").innerText = "评分：" + score;
+
+          // 保存数据库
+          await supabase.from("study_logs").insert({
+            user_id: currentUser.id,
+            word: target,
+            score: score,
+            correct: score > 70,
+          });
+
+          // 错词
+          if (score < 60) {
+            await supabase.from("wrong_words").insert({
+              user_id: currentUser.id,
+              word: target,
+            });
+          }
+        };
+      }
+
+      // ========== 相似度 ==========
+      function similar(a, b) {
+        let m = Math.max(a.length, b.length);
+        let s = 0;
+        for (let i = 0; i < Math.min(a.length, b.length); i++) {
+          if (a[i] == b[i]) s++;
+        }
+        return Math.round((s / m) * 100);
+      }
+
+      // ========== 下一个 ==========
+      function nextWord() {
+        i++;
+        loadWord();
+        document.getElementById("score").innerText = "";
+      }
+    </script>
+  </body>
+</html>
