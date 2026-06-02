@@ -4,12 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>English SaaS App</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f172a">
-
 <style>
 body{
 margin:0;
@@ -19,9 +16,7 @@ color:white;
 display:flex;
 justify-content:center;
 }
-
 .app{width:100%;max-width:420px;padding:20px;}
-
 .card{
 background:#1f2937;
 padding:20px;
@@ -29,15 +24,14 @@ border-radius:16px;
 margin-top:20px;
 text-align:center;
 }
-
 input{
 width:100%;
 padding:12px;
 border-radius:10px;
 border:none;
 margin-top:10px;
+box-sizing: border-box; /* 防止输入框超出边界 */
 }
-
 button{
 width:100%;
 padding:12px;
@@ -47,47 +41,39 @@ border-radius:10px;
 font-size:16px;
 cursor:pointer;
 }
-
 .blue{background:#3b82f6;color:white;}
 .green{background:#22c55e;color:white;}
 .gray{background:#374151;color:white;}
-
 .word{font-size:34px;font-weight:bold;}
 </style>
 </head>
-
 <body>
-
 <div class="app">
-
-<!-- 登录 -->
+<!-- 登录/注册 盒子 -->
 <div class="card" id="loginBox">
 <h2>📚 English SaaS App</h2>
+<input id="email" type="email" placeholder="输入邮箱">
+<input id="password" type="password" placeholder="输入密码 (至少6位)">
 
-<input id="email" placeholder="输入邮箱登录">
-<button class="blue" onclick="login()">发送登录链接</button>
+<!-- 两个按钮：一个登录，一个注册 -->
+<button class="blue" onclick="login()">立即登录</button>
+<button class="gray" onclick="signUp()" style="font-size:14px; opacity:0.8;">没有账号？去注册</button>
 
 <div id="msg" style="margin-top:10px;font-size:13px;color:#a5b4fc;"></div>
 </div>
 
 <!-- 主界面 -->
 <div class="card" id="appBox" style="display:none">
-
 <div class="word" id="word">loading</div>
-
 <button class="blue" onclick="speak()">🔊 发音</button>
 <button class="green" onclick="rec()">🎤 跟读</button>
 <button class="gray" onclick="nextWord()">下一个</button>
-
 <div id="score"></div>
-
 </div>
-
 </div>
 
 <script>
-
-// 🔴 改成你的 Supabase
+// 🔴 改成你的 Supabase 真实配置
 const supabase = window.supabase.createClient(
 "https://mtxoggmczoykokkpmsay.supabase.co",
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eG9nZ21jem95a29ra3Btc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzQ1OTIsImV4cCI6MjA5NTk1MDU5Mn0.AhdjWcHhvcVIQ7808nPhthQipQ4sTZb0aOXljkmzR3Y"
@@ -95,43 +81,79 @@ const supabase = window.supabase.createClient(
 
 // 单词
 const words = [
-"abandon",
-"benefit",
-"challenge",
-"develop",
-"efficient",
-"focus",
-"generate",
-"improve",
-"maintain",
-"strategy"
+"abandon", "benefit", "challenge", "develop", "efficient",
+"focus", "generate", "improve", "maintain", "strategy"
 ];
-
 let i = 0;
 let user = null;
 
-// ================= 登录 =================
+// ================= 1. 账号密码登录 =================
 async function login(){
-const email = document.getElementById("email").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    
+    if(!email || !password) {
+        alert("请填写邮箱和密码");
+        return;
+    }
+    
+    document.getElementById("msg").innerText = "正在登录...";
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+    });
 
-document.getElementById("msg").innerText = "发送中...";
-
-const { error } = await supabase.auth.signInWithOtp({
-email
-});
-
-if(error){
-document.getElementById("msg").innerText = "❌ 发送失败";
-}else{
-document.getElementById("msg").innerText = "✅ 已发送邮件，请去邮箱点击链接";
+    if(error){
+        console.error(error);
+        document.getElementById("msg").innerText = "❌ 登录失败: " + error.message;
+    } else {
+        document.getElementById("msg").innerText = "✅ 登录成功！";
+        checkUser(); // 刷新界面状态
+    }
 }
+
+// ================= 2. 账号密码注册 =================
+async function signUp(){
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    
+    if(!email || !password) {
+        alert("请填写邮箱和密码");
+        return;
+    }
+    
+    document.getElementById("msg").innerText = "正在注册...";
+    
+    const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+    });
+
+    if(error){
+        console.error(error);
+        document.getElementById("msg").innerText = "❌ 注册失败: " + error.message;
+    } else {
+        // 注意：Supabase 默认注册后需要去邮箱激活。
+        // 如果你关闭了邮箱验证（见下方说明），这里就会直接登录成功。
+        document.getElementById("msg").innerText = "✅ 注册成功！请检查邮箱激活，或直接尝试登录。";
+        checkUser();
+    }
 }
 
-// ================= 检查登录 =================
+// ================= 3. 检查登录状态 =================
 async function checkUser(){
-const { data } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    if(data && data.user){
+        user = data.user;
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("appBox").style.display = "block";
+        // 这里可以调用你的初始化单词函数，比如 nextWord();
+    }
+}
 
-if(data.user){
-user = data.user;
-
-document.getElementById("loginBox").style.display = "
+// 页面加载时自动检查
+checkUser();
+</script>
+</body>
+</html>
