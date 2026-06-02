@@ -51,7 +51,7 @@ cursor:pointer;
 <div class="app">
 <div class="card" id="loginBox">
 <h2>📚 English SaaS App</h2>
-<input id="email" type="email" placeholder="输入邮箱">
+<input id="username" type="text" placeholder="输入账号 (普通用户名)">
 <input id="password" type="password" placeholder="输入密码 (至少6位)">
 
 <button class="blue" onclick="login()">立即登录</button>
@@ -70,34 +70,37 @@ cursor:pointer;
 </div>
 
 <script>
-// 🔴 改成你的 Supabase 真实配置
+// ================= 核心配置 =================
 const supabase = window.supabase.createClient(
-"https://mtxoggmczoykokkpmsay.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eG9nZ21jem95a29ra3Btc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzQ1OTIsImV4cCI6MjA5NTk1MDU5Mn0.AhdjWcHhvcVIQ7808nPhthQipQ4sTZb0aOXljkmzR3Y"
+  "https://mtxoggmczoykokkpmsay.supabase.co", 
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eG9nZ21jem95a29ra3Btc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzQ1OTIsImV4cCI6MjA5NTk1MDU5Mn0.AhdjWcHhvcVIQ7808nPhthQipQ4sTZb0aOXljkmzR3Y"
 );
 
 // 单词
 const words = [
-"abandon", "benefit", "challenge", "develop", "efficient",
-"focus", "generate", "improve", "maintain", "strategy"
+  "abandon", "benefit", "challenge", "develop", "efficient",
+  "focus", "generate", "improve", "maintain", "strategy"
 ];
 let i = 0;
 let user = null;
 
-// ================= 1. 账号密码登录 =================
+// ================= 1. 普通账号登录 =================
 async function login(){
-    const email = document.getElementById("email").value;
+    const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
     
-    if(!email || !password) {
-        alert("请填写邮箱和密码");
+    if(!username || !password) {
+        alert("请填写账号和密码");
         return;
     }
+    
+    // 自动转换为虚拟邮箱格式给后端
+    const fakeEmail = `${username}@app.internal`;
     
     document.getElementById("msg").innerText = "正在登录...";
     
     const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
+        email: fakeEmail,
         password: password,
     });
 
@@ -106,24 +109,27 @@ async function login(){
         document.getElementById("msg").innerText = "❌ 登录失败: " + error.message;
     } else {
         document.getElementById("msg").innerText = "✅ 登录成功！";
-        checkUser(); // 刷新界面状态
+        checkUser(); 
     }
 }
 
-// ================= 2. 账号密码注册 =================
+// ================= 2. 普通账号注册 =================
 async function signUp(){
-    const email = document.getElementById("email").value;
+    const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
     
-    if(!email || !password) {
-        alert("请填写邮箱和密码");
+    if(!username || !password) {
+        alert("请填写账号和密码");
         return;
     }
+    
+    // 自动转换为虚拟邮箱格式给后端
+    const fakeEmail = `${username}@app.internal`;
     
     document.getElementById("msg").innerText = "正在注册...";
     
     const { data, error } = await supabase.auth.signUp({
-        email: email,
+        email: fakeEmail,
         password: password,
     });
 
@@ -132,7 +138,7 @@ async function signUp(){
         document.getElementById("msg").innerText = "❌ 注册失败: " + error.message;
     } else {
         document.getElementById("msg").innerText = "✅ 注册成功！已直接登录。";
-        checkUser();
+        checkUser(); 
     }
 }
 
@@ -143,9 +149,6 @@ async function checkUser(){
         user = data.user;
         document.getElementById("loginBox").style.display = "none";
         document.getElementById("appBox").style.display = "block";
-        
-        // 如果你定义了渲染单词的函数，可以在这里解开注释
-        // if (typeof nextWord === "function") nextWord(); 
     }
 }
 
@@ -158,7 +161,7 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-// 页面加载时自动检查登录状态
+// 页面加载时自动运行状态检查
 checkUser();
 </script>
 </body>
