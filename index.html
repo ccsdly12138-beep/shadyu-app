@@ -49,20 +49,17 @@ cursor:pointer;
 </head>
 <body>
 <div class="app">
-<!-- 登录/注册 盒子 -->
 <div class="card" id="loginBox">
 <h2>📚 English SaaS App</h2>
 <input id="email" type="email" placeholder="输入邮箱">
 <input id="password" type="password" placeholder="输入密码 (至少6位)">
 
-<!-- 两个按钮：一个登录，一个注册 -->
 <button class="blue" onclick="login()">立即登录</button>
 <button class="gray" onclick="signUp()" style="font-size:14px; opacity:0.8;">没有账号？去注册</button>
 
 <div id="msg" style="margin-top:10px;font-size:13px;color:#a5b4fc;"></div>
 </div>
 
-<!-- 主界面 -->
 <div class="card" id="appBox" style="display:none">
 <div class="word" id="word">loading</div>
 <button class="blue" onclick="speak()">🔊 发音</button>
@@ -75,8 +72,8 @@ cursor:pointer;
 <script>
 // 🔴 改成你的 Supabase 真实配置
 const supabase = window.supabase.createClient(
-"https://mtxoggmczoykokkpmsay.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eG9nZ21jem95a29ra3Btc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzQ1OTIsImV4cCI6MjA5NTk1MDU5Mn0.AhdjWcHhvcVIQ7808nPhthQipQ4sTZb0aOXljkmzR3Y"
+"YOUR_SUPABASE_URL",
+"YOUR_SUPABASE_ANON_KEY"
 );
 
 // 单词
@@ -134,9 +131,7 @@ async function signUp(){
         console.error(error);
         document.getElementById("msg").innerText = "❌ 注册失败: " + error.message;
     } else {
-        // 注意：Supabase 默认注册后需要去邮箱激活。
-        // 如果你关闭了邮箱验证（见下方说明），这里就会直接登录成功。
-        document.getElementById("msg").innerText = "✅ 注册成功！请检查邮箱激活，或直接尝试登录。";
+        document.getElementById("msg").innerText = "✅ 注册成功！已直接登录。";
         checkUser();
     }
 }
@@ -148,11 +143,22 @@ async function checkUser(){
         user = data.user;
         document.getElementById("loginBox").style.display = "none";
         document.getElementById("appBox").style.display = "block";
-        // 这里可以调用你的初始化单词函数，比如 nextWord();
+        
+        // 如果你定义了渲染单词的函数，可以在这里解开注释
+        // if (typeof nextWord === "function") nextWord(); 
     }
 }
 
-// 页面加载时自动检查
+// ================= 4. PWA Service Worker 注册 =================
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(reg => console.log("Service Worker 注册成功:", reg.scope))
+      .catch(err => console.log("Service Worker 注册失败:", err));
+  });
+}
+
+// 页面加载时自动检查登录状态
 checkUser();
 </script>
 </body>
