@@ -1,28 +1,36 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>English App</title>
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<html><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>English App</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head><body>
 <div class="container">
-<h1>English App</h1>
-<p>每日10词学习</p>
-<div id="login">
-<input id="email" placeholder="邮箱">
-<button onclick="login()">登录</button>
+  <h1>English App</h1>
+  <p>每日10词学习</p>
+
+  <div id="login">
+    <input id="email" type="email" placeholder="邮箱">
+    <input id="password" type="password" placeholder="密码">
+    <button onclick="login()">登录 / 注册</button>
+  </div>
+
+  <div id="app" style="display:none">
+    <h2 id="word"></h2>
+    <button onclick="speakWord()">🔊 发音</button>
+    <button onclick="markKnown()">✅ 我会</button>
+    <button onclick="markUnknown()">❌ 不会</button>
+    <br>
+    <button onclick="logout()" style="margin-top:20px;background:#555">退出登录</button>
+  </div>
 </div>
-<div id="app" style="display:none">
-<h2 id="word"></h2>
-<button onclick="speakWord()">🔊 发音</button>
-<button onclick="markKnown()">✅ 我会</button>
-<button onclick="markUnknown()">❌ 不会</button>
-</div>
-</div>
+
 <script src="words.js"></script>
 <script src="supabase.js"></script>
 <script src="app.js"></script>
-  <script>
+<script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js');
   }
