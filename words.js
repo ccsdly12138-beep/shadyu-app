@@ -1,0 +1,1 @@
+const WORDS=['abandon','benefit','challenge','develop','efficient','focus','generate','improve','maintain','strategy'];

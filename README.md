@@ -1,0 +1,1 @@
+上传到GitHub Pages，并配置Supabase Auth Redirect URL。
