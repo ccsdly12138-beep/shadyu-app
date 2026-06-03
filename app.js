@@ -10,19 +10,25 @@ async function login() {
   const password = document.getElementById('password').value.trim();
   if (!email || !password) { alert('请输入邮箱和密码'); return; }
 
-  // 先尝试登录
   const { error } = await window._supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    // 登录失败则尝试注册
-    const { error: signUpError } = await window._supabase.auth.signUp({ email, password });
-    if (signUpError) {
-      alert('失败: ' + signUpError.message);
+    if (error.message.includes('Invalid login credentials')) {
+      // 登录失败，尝试注册新账号
+      const { error: signUpError } = await window._supabase.auth.signUp({ email, password });
+      if (signUpError) {
+        if (signUpError.message.includes('already registered')) {
+          alert('该邮箱已注册，请检查密码是否正确');
+        } else {
+          alert('失败: ' + signUpError.message);
+        }
+      } else {
+        alert('✅ 注册成功，已自动登录');
+      }
     } else {
-      alert('✅ 注册成功，已自动登录');
+      alert('失败: ' + error.message);
     }
   }
 }
-
 async function logout() {
   await window._supabase.auth.signOut();
 }
