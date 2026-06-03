@@ -7,13 +7,24 @@ function markUnknown() { idx = (idx + 1) % 10; showWord(); }
 
 async function login() {
   const email = document.getElementById('email').value.trim();
-  if (!email) { alert('请输入邮箱'); return; }
-  const { error } = await window._supabase.auth.signInWithOtp({ email });
+  const password = document.getElementById('password').value.trim();
+  if (!email || !password) { alert('请输入邮箱和密码'); return; }
+
+  // 先尝试登录
+  const { error } = await window._supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    alert('登录失败: ' + error.message);
-  } else {
-    alert('✅ 验证邮件已发送，请查收并点击链接登录');
+    // 登录失败则尝试注册
+    const { error: signUpError } = await window._supabase.auth.signUp({ email, password });
+    if (signUpError) {
+      alert('失败: ' + signUpError.message);
+    } else {
+      alert('✅ 注册成功，已自动登录');
+    }
   }
+}
+
+async function logout() {
+  await window._supabase.auth.signOut();
 }
 
 window._supabase.auth.onAuthStateChange((event, session) => {
