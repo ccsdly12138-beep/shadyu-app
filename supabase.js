@@ -1,4 +1,4 @@
 const supabase=window.supabase.createClient(
 'https://mtxoggmczoykokkpmsay.supabase.co',
-'REPLACE_WITH_YOUR_CURRENT_ANON_KEY'
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10eG9nZ21jem95a29ra3Btc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzQ1OTIsImV4cCI6MjA5NTk1MDU5Mn0.AhdjWcHhvcVIQ7808nPhthQipQ4sTZb0aOXljkmzR3Y'
 );
