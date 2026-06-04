@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>联机你画我猜</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<style>
+*{ margin:0; padding:0; box-sizing:border-box; }
+body{ font-family:"Microsoft YaHei",sans-serif; background:#050816; color:white; overflow:hidden; height:100vh; }
+
+#bg{ position:fixed; inset:0; z-index:0; }
+
+.container{ position:relative; z-index:1; display:flex; height:100vh; padding:16px; gap:16px; }
+
+.left{ flex:1; display:flex; flex-direction:column; gap:12px; min-width:0; }
+
+.top{ display:flex; justify-content:space-between; align-items:center; }
+
+.logo{ font-size:28px; color:#00f7ff; font-weight:bold; text-shadow:0 0 10px #00f7ff,0 0 30px #00f7ff; }
+
+.timer-box{ padding:8px 20px; border-radius:20px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); font-size:22px; }
+
+.canvas-wrap{ flex:1; position:relative; border-radius:20px; overflow:hidden; box-shadow:0 0 30px rgba(0,247,255,0.3); }
+#board{ position:absolute; inset:0; width:100%; height:100%; background:white; cursor:crosshair; border-radius:20px; }
+
+.toolbar{
+  display:flex; align-items:center; gap:10px;
+  background:rgba(255,255,255,0.06); border-radius:14px; padding:10px 14px;
+  overflow-x:auto; flex-shrink:0; flex-wrap:nowrap;
+}
+.toolbar-label{ font-size:12px; color:rgba(255,255,255,0.5); white-space:nowrap; flex-shrink:0; }
+#color-picker-input{
+  width:32px; height:32px; border-radius:50%; border:3px solid white;
+  cursor:pointer; padding:0; outline:none; overflow:hidden; flex-shrink:0;
+}
+#color-picker-input::-webkit-color-swatch-wrapper{ padding:0; }
+#color-picker-input::-webkit-color-swatch{ border:none; border-radius:50%; }
+.size-slider-wrap{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.size-slider{
+  -webkit-appearance:none; appearance:none;
+  width:100px; height:5px; border-radius:4px;
+  background:rgba(255,255,255,0.2); outline:none; cursor:pointer;
+}
+.size-slider::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:18px; height:18px; border-radius:50%;
+  background:#00f7ff; cursor:pointer;
+  box-shadow:0 0 6px rgba(0,247,255,0.6);
+}
+.size-preview{
+  width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.eraser-btn{
+  background:rgba(255,255,255,0.1); border:1.5px solid rgba(255,255,255,0.2);
+  color:white; border-radius:20px; padding:5px 14px; cursor:pointer; font-size:13px;
+  transition:all 0.15s; white-space:nowrap; flex-shrink:0;
+}
+.eraser-btn.active{ background:#ff5500; border-color:#ff5500; }
+
+.toolbar.disabled{ opacity:0.35; pointer-events:none; }
+.canvas-wrap.no-draw #board{ cursor:default; pointer-events:none; }
+
+.right{
+  width:320px; flex-shrink:0;
+  background:rgba(255,255,255,0.05); backdrop-filter:blur(20px);
+  border-radius:20px; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;
+}
+.right::-webkit-scrollbar{ width:4px; }
+.right::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.2); border-radius:2px; }
+
+.section-title{ font-size:14px; color:#00f7ff; margin-bottom:8px; font-weight:bold; }
+
+input{
+  width:100%; padding:10px 14px; border:none; border-radius:12px;
+  background:rgba(255,255,255,0.08); color:white; font-size:14px; outline:none;
+  border:1px solid rgba(255,255,255,0.1); transition:border-color 0.2s;
+}
+input:focus{ border-color:#00f7ff; }
+input::placeholder{ color:rgba(255,255,255,0.3); }
+
+button{ border:none; border-radius:12px; padding:10px; color:white; font-size:14px; font-weight:bold; cursor:pointer; transition:all 0.2s; width:100%; }
+button:hover{ transform:translateY(-1px); opacity:0.9; }
+
+.btn-join{ background:linear-gradient(45deg,#00f7ff,#0077ff); margin-top:6px; }
+.btn-start{ background:linear-gradient(45deg,#00ff88,#00aa55); }
+.btn-clear{ background:linear-gradient(45deg,#ff5500,#ff0055); margin-top:6px; }
+.btn-back{ background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); font-size:13px; padding:8px; }
+button:disabled{ opacity:0.35; cursor:not-allowed; transform:none !important; }
+
+.word-box{
+  padding:14px; background:rgba(0,247,255,0.1); border-radius:14px;
+  text-align:center; font-size:26px; font-weight:bold; letter-spacing:6px;
+  border:1px solid rgba(0,247,255,0.2); min-height:56px;
+  display:flex; align-items:center; justify-content:center;
+  word-break:break-all;
+}
+.word-hint span{
+  display:inline-block; width:22px; height:3px;
+  border-bottom:3px solid #00f7ff; margin:0 3px 6px;
+  vertical-align:middle;
+}
+
+.role-tag{
+  text-align:center; font-size:12px; padding:4px 10px; border-radius:8px;
+  display:inline-block;
+}
+.role-drawer{ background:rgba(0,255,136,0.2); color:#00ff88; }
+.role-guesser{ background:rgba(0,247,255,0.2); color:#00f7ff; }
+
+.message{ text-align:center; font-size:16px; min-height:28px; padding:4px; }
+.msg-correct{ color:#00ff88; }
+.msg-wrong{ color:#ff5555; }
+
+.drawer-hint{
+  text-align:center; font-size:13px; color:rgba(255,255,255,0.5);
+  padding:6px 10px; background:rgba(255,255,255,0.04); border-radius:8px;
+}
+.drawer-hint b{ color:#00ff88; }
+
+.chat{ height:160px; overflow-y:auto; background:rgba(255,255,255,0.04); border-radius:12px; padding:10px; }
+.chat::-webkit-scrollbar{ width:3px; }
+.chat::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.15); }
+.chat-msg{ font-size:13px; padding:3px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.chat-msg.correct{ color:#00ff88; font-weight:bold; }
+.chat-msg.emoji-msg{ font-size:18px; }
+.chat-msg.system{ color:rgba(255,255,255,0.45); font-style:italic; }
+
+.scoreboard{ background:rgba(255,255,255,0.04); border-radius:12px; overflow:hidden; }
+.player{ display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; }
+.player:last-child{ border-bottom:none; }
+.player-name{ color:rgba(255,255,255,0.8); }
+.player.is-drawer .player-name::after{ content:" ✏️"; }
+.player-score{ color:#00f7ff; font-weight:bold; }
+
+.emoji-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.emoji-btn{ font-size:22px; padding:6px; background:rgba(255,255,255,0.06); border-radius:10px; width:auto; }
+.emoji-btn:hover{ background:rgba(255,255,255,0.15); transform:scale(1.1); }
+
+.guess-row{ display:flex; gap:6px; }
+.guess-row input{ flex:1; }
+.guess-row button{ width:auto; padding:10px 16px; flex-shrink:0; background:linear-gradient(45deg,#00f7ff,#0077ff); }
+
+.float-emoji{ position:fixed; font-size:50px; z-index:999; pointer-events:none; animation:floatUp 2s ease forwards; }
+@keyframes floatUp{ 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-200px)} }
+
+.round-banner{
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.8);
+  background:rgba(0,10,30,0.95); border:2px solid #00f7ff; border-radius:24px;
+  padding:32px 48px; text-align:center; z-index:100;
+  animation:popIn 0.3s ease forwards;
+}
+@keyframes popIn{ to{transform:translate(-50%,-50%) scale(1);} }
+.round-banner h2{ font-size:28px; color:#00ff88; margin-bottom:8px; }
+.round-banner p{ color:rgba(255,255,255,0.7); font-size:16px; }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div class="container">
+  <div class="left">
+    <div class="top">
+      <div class="logo">🎨 联机你画我猜</div>
+      <div class="timer-box" id="timer">60秒</div>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <span class="toolbar-label">颜色：</span>
+      <input type="color" id="color-picker-input" value="#222222" oninput="setColorPicker(this.value)" title="点击选颜色"/>
+      <span class="toolbar-label">粗细：</span>
+      <div class="size-slider-wrap">
+        <div class="size-preview" id="size-preview"><div style="background:#00f7ff;border-radius:50%;width:4px;height:4px"></div></div>
+        <input type="range" class="size-slider" id="size-slider" min="1" max="30" value="4" oninput="setSizeSlider(this.value)"/>
+        <div class="size-preview" id="size-preview-big"><div style="background:#00f7ff;border-radius:50%;width:16px;height:16px"></div></div>
+      </div>
+      <button class="eraser-btn" id="eraser-btn" onclick="toggleEraser()">🧹 橡皮</button>
+    </div>
+
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="board"></canvas>
+    </div>
+  </div>
+
+  <div class="right">
+    <button class="btn-back" onclick="window.location.href='../index.html'">← 返回首页</button>
+
+    <div>
+      <div class="section-title">加入房间</div>
+      <input id="inp-name" placeholder="输入昵称"/>
+      <input id="inp-room" placeholder="输入房间号" style="margin-top:6px"/>
+      <button class="btn-join" onclick="joinRoom()">加入游戏</button>
+    </div>
+
+    <div class="drawer-hint" id="drawer-hint">等待加入房间…</div>
+
+    <div>
+      <div class="section-title">当前词语 <span id="role-tag"></span></div>
+      <div class="word-box" id="word-box">等待开始</div>
+      <button class="btn-start" id="btn-start" style="margin-top:8px" onclick="startGame()" disabled>开始游戏（出题）</button>
+      <button class="btn-clear" id="btn-clear" onclick="clearBoard()" disabled>清空画板</button>
+    </div>
+
+    <div>
+      <div class="section-title">猜答案</div>
+      <div class="guess-row">
+        <input id="inp-guess" placeholder="输入答案" onkeydown="if(event.key==='Enter')guessWord()"/>
+        <button id="btn-guess" onclick="guessWord()" disabled>提交</button>
+      </div>
+      <div class="message" id="message"></div>
+    </div>
+
+    <div>
+      <div class="section-title">Emoji 互动</div>
+      <div class="emoji-grid">
+        <button class="emoji-btn" onclick="sendEmoji('😂')">😂</button>
+        <button class="emoji-btn" onclick="sendEmoji('🔥')">🔥</button>
+        <button class="emoji-btn" onclick="sendEmoji('😱')">😱</button>
+        <button class="emoji-btn" onclick="sendEmoji('🎉')">🎉</button>
+        <button class="emoji-btn" onclick="sendEmoji('👏')">👏</button>
+        <button class="emoji-btn" onclick="sendEmoji('💀')">💀</button>
+        <button class="emoji-btn" onclick="sendEmoji('😍')">😍</button>
+        <button class="emoji-btn" onclick="sendEmoji('🤯')">🤯</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">排行榜</div>
+      <div class="scoreboard" id="scoreboard"><div class="player" style="color:rgba(255,255,255,0.3);font-size:13px;justify-content:center">暂无数据</div></div>
+    </div>
+
+    <div>
+      <div class="section-title">聊天记录</div>
+      <div class="chat" id="chat"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://sheythvfvmvwzvgvvwvm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNoZXl0aHZmdm12d3p2Z3Z2d3ZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NDQzOTEsImV4cCI6MjA5NTQyMDM5MX0.wXOO4uyVhVeKlCQ2tyoyxdU0lWrYQRA2tQD4ho89iCo';
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let myRoom = "", myName = "", currentWord = "", isDrawer = false;
+let scores = {};
+let timerVal = 60, timerInterval = null;
+let penColor = "#222222", penSize = 4, eraserOn = false;
+let drawing = false, lastX = 0, lastY = 0;
+let pendingStrokes = [];
+let players = [];
+let drawerIndex = 0;
+let roundActive = false;
+
+const words = ["苹果","香蕉","沙发","汽车","飞机","猫","狗","披萨","电脑","手机",
+  "咖啡","桌子","椅子","雨伞","眼镜","帽子","书包","足球","彩虹","蛋糕",
+  "冰淇淋","企鹅","螃蟹","蜡笔","气球","地球","火箭","闹钟","钢琴","章鱼"];
+
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+let savedImage = null;
+
+function resizeCanvas() {
+  const wrap = document.getElementById("canvas-wrap");
+  saveCanvasState();
+  canvas.width = wrap.offsetWidth;
+  canvas.height = wrap.offsetHeight;
+  if (savedImage) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    img.src = savedImage;
+  } else {
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+function saveCanvasState() {
+  if (canvas.width > 0 && canvas.height > 0) savedImage = canvas.toDataURL();
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+function setColorPicker(val) {
+  eraserOn = false;
+  document.getElementById("eraser-btn").classList.remove("active");
+  penColor = val;
+}
+function setSizeSlider(val) {
+  penSize = parseInt(val);
+  const sz = Math.max(4, Math.min(penSize, 24));
+  document.getElementById("size-preview").innerHTML =
+    `<div style="background:#00f7ff;border-radius:50%;width:${sz}px;height:${sz}px"></div>`;
+}
+function toggleEraser() {
+  eraserOn = !eraserOn;
+  document.getElementById("eraser-btn").classList.toggle("active", eraserOn);
+}
+
+function drawLine(x0, y0, x1, y1, color, size, eraser) {
+  ctx.save();
+  ctx.strokeStyle = eraser ? "rgba(0,0,0,1)" : color;
+  ctx.lineWidth = eraser ? size * 3 : size;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (eraser) ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.moveTo(x0 * canvas.width, y0 * canvas.height);
+  ctx.lineTo(x1 * canvas.width, y1 * canvas.height);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  return {
+    x: (touch.clientX - rect.left) / rect.width,
+    y: (touch.clientY - rect.top) / rect.height
+  };
+}
+
+canvas.addEventListener("mousedown", e => {
+  if (!myRoom || !isDrawer) return;
+  drawing = true;
+  const p = getPos(e); lastX = p.x; lastY = p.y;
+  saveCanvasState();
+});
+canvas.addEventListener("mousemove", e => {
+  if (!drawing) return;
+  const p = getPos(e);
+  drawLine(lastX, lastY, p.x, p.y, penColor, penSize, eraserOn);
+  pendingStrokes.push({ x0:lastX, y0:lastY, x1:p.x, y1:p.y, c:penColor, s:penSize, e:eraserOn });
+  lastX = p.x; lastY = p.y;
+});
+window.addEventListener("mouseup", () => { if (drawing) { drawing = false; flushStrokes(); } });
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  canvas.dispatchEvent(new MouseEvent("mousedown", { clientX:e.touches[0].clientX, clientY:e.touches[0].clientY }));
+}, { passive:false });
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  canvas.dispatchEvent(new MouseEvent("mousemove", { clientX:e.touches[0].clientX, clientY:e.touches[0].clientY }));
+}, { passive:false });
+canvas.addEventListener("touchend", e => {
+  e.preventDefault();
+  window.dispatchEvent(new MouseEvent("mouseup"));
+}, { passive:false });
+
+setInterval(flushStrokes, 80);
+function flushStrokes() {
+  if (!pendingStrokes.length || !myRoom) return;
+  const strokes = [...pendingStrokes];
+  pendingStrokes = [];
+  sendEvent("draw", { strokes });
+}
+
+function clearBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  savedImage = null;
+  if (myRoom) sendEvent("clear", {});
+}
+
+async function joinRoom() {
+  myName = document.getElementById("inp-name").value.trim();
+  myRoom = document.getElementById("inp-room").value.trim();
+  if (!myName || !myRoom) { alert("请输入昵称和房间号"); return; }
+  listenRealtime();
+  addPlayer(myName);
+  sendEvent("join", { name: myName });
+  addChat(`🎮 你（${myName}）加入了房间`, "system");
+  updateDrawerUI();
+}
+
+function addPlayer(name) {
+  if (!players.find(p => p.name === name)) {
+    players.push({ name });
+  }
+}
+
+function listenRealtime() {
+  sb.channel("room-" + myRoom)
+    .on("postgres_changes", { event:"INSERT", schema:"public", table:"game_events" }, payload => {
+      const ev = payload.new;
+      if (ev.room !== myRoom) return;
+      handleEvent(ev);
+    })
+    .subscribe();
+}
+
+function handleEvent(ev) {
+  if (ev.type === "draw") {
+    if (!isDrawer) {
+      (ev.data.strokes || []).forEach(s => drawLine(s.x0, s.y0, s.x1, s.y1, s.c, s.s, s.e));
+    }
+  }
+  if (ev.type === "clear") {
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    savedImage = null;
+  }
+  if (ev.type === "start") {
+    drawerIndex = ev.data.drawerIndex;
+    roundActive = true;
+    const currentDrawerName = ev.data.drawerName;
+    isDrawer = (myName === currentDrawerName);
+    if (isDrawer) {
+      document.getElementById("word-box").textContent = currentWord;
+      document.getElementById("role-tag").innerHTML =
+        '<span class="role-tag role-drawer">✏️ 出题者</span>';
+    } else {
+      currentWord = "";
+      showWordHint(ev.data.len);
+      document.getElementById("role-tag").innerHTML =
+        '<span class="role-tag role-guesser">🔍 猜题者</span>';
+    }
+    updateDrawerUI();
+    updateButtonStates();
+    startTimer();
+    addChat(`🎯 新一轮开始！出题者：${currentDrawerName}`, "system");
+  }
+  if (ev.type === "correct") {
+    roundActive = false;
+    const winner = ev.data.name;
+    addChat(`🎉 ${winner} 猜对了！答案是「${ev.data.word}」`, "correct");
+    showRoundBanner(winner, ev.data.word);
+    if (winner === myName) {
+      document.getElementById("message").textContent = "🎉 猜对了！+10分";
+      document.getElementById("message").className = "message msg-correct";
+    }
+    if (isDrawer) setTimeout(() => autoNextRound(), 5000);
+  }
+  if (ev.type === "score") {
+    scores = ev.data.scores;
+    renderScores();
+  }
+  if (ev.type === "next_round") {
+    drawerIndex = ev.data.drawerIndex;
+    isDrawer = (myName === players[drawerIndex]?.name);
+    roundActive = false;
+    currentWord = "";
+    document.getElementById("word-box").textContent = "等待出题…";
+    document.getElementById("role-tag").innerHTML = "";
+    document.getElementById("timer").textContent = "60秒";
+    clearInterval(timerInterval);
+    updateDrawerUI();
+    updateButtonStates();
+    addChat(`➡️ 轮到 ${players[drawerIndex]?.name} 出题了`, "system");
+  }
+  if (ev.type === "chat") { addChat(ev.data.text); }
+  if (ev.type === "emoji") {
+    showEmoji(ev.data.emoji);
+    addChat(`${ev.data.emoji} ${ev.data.name}`, "emoji-msg");
+  }
+  if (ev.type === "join") {
+    addPlayer(ev.data.name);
+    addChat(`👋 ${ev.data.name} 加入了房间`, "system");
+    updateDrawerUI();
+    renderScores();
+  }
+}
+
+function startGame() {
+  if (!myRoom) { alert("请先加入房间"); return; }
+  if (!isDrawer) { alert("现在不是你的出题轮"); return; }
+  currentWord = words[Math.floor(Math.random() * words.length)];
+  document.getElementById("word-box").textContent = currentWord;
+  document.getElementById("role-tag").innerHTML =
+    '<span class="role-tag role-drawer">✏️ 出题者</span>';
+  sendEvent("start", {
+    word: currentWord,
+    len: currentWord.length,
+    drawerName: myName,
+    drawerIndex: drawerIndex
+  });
+  clearBoard();
+  updateButtonStates();
+}
+
+function guessWord() {
+  if (!myRoom) { alert("请先加入房间"); return; }
+  if (isDrawer) return;
+  if (!roundActive) return;
+  const val = document.getElementById("inp-guess").value.trim();
+  if (!val) return;
+  if (val === currentWord) {
+    if (!scores[myName]) scores[myName] = 0;
+    scores[myName] += 10;
+    const drawerName = players[drawerIndex]?.name;
+    if (drawerName && drawerName !== myName) {
+      if (!scores[drawerName]) scores[drawerName] = 0;
+      scores[drawerName] += 5;
+    }
+    sendEvent("correct", { name: myName, word: currentWord, drawerName });
+    sendEvent("score", { scores });
+    document.getElementById("inp-guess").value = "";
+    roundActive = false;
+  } else {
+    document.getElementById("message").textContent = "❌ 再想想～";
+    document.getElementById("message").className = "message msg-wrong";
+    setTimeout(() => document.getElementById("message").textContent = "", 1500);
+    sendEvent("chat", { text: `${myName}: ${val}` });
+    document.getElementById("inp-guess").value = "";
+  }
+}
+
+function autoNextRound() {
+  const next = (drawerIndex + 1) % Math.max(players.length, 1);
+  sendEvent("next_round", { drawerIndex: next });
+}
+
+function updateDrawerUI() {
+  const currentDrawer = players[drawerIndex];
+  const hint = document.getElementById("drawer-hint");
+  if (!myRoom) { hint.innerHTML = "等待加入房间…"; return; }
+  if (currentDrawer) {
+    hint.innerHTML = `当前出题人：<b>${currentDrawer.name}</b>（共 ${players.length} 人）`;
+  } else {
+    hint.innerHTML = `已加入房间，共 ${players.length} 人`;
+  }
+}
+
+function updateButtonStates() {
+  const btnStart = document.getElementById("btn-start");
+  const btnClear = document.getElementById("btn-clear");
+  const btnGuess = document.getElementById("btn-guess");
+  const toolbar  = document.getElementById("toolbar");
+  const wrap     = document.getElementById("canvas-wrap");
+  btnStart.disabled = !isDrawer || roundActive;
+  btnClear.disabled = !isDrawer;
+  btnGuess.disabled = isDrawer || !roundActive;
+  if (isDrawer) {
+    toolbar.classList.remove("disabled");
+    wrap.classList.remove("no-draw");
+  } else {
+    toolbar.classList.add("disabled");
+    wrap.classList.add("no-draw");
+  }
+}
+
+function showWordHint(len) {
+  const box = document.getElementById("word-box");
+  box.classList.add("word-hint");
+  box.innerHTML = Array.from({ length: len }, () => "<span></span>").join("");
+}
+
+function showRoundBanner(winner, word) {
+  const old = document.getElementById("round-banner");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.id = "round-banner";
+  div.className = "round-banner";
+  div.innerHTML = `<h2>🎉 ${winner} 猜对了！</h2><p>答案是「<b style="color:#00f7ff">${word}</b>」<br><small style="color:rgba(255,255,255,0.4)">5秒后进入下一轮…</small></p>`;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+}
+
+function renderScores() {
+  const board = document.getElementById("scoreboard");
+  const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]);
+  const drawerName = players[drawerIndex]?.name;
+  if (!sorted.length) return;
+  board.innerHTML = sorted.map(([n, s], i) => {
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'　';
+    const drawerClass = n === drawerName ? " is-drawer" : "";
+    return `<div class="player${drawerClass}">
+      <span class="player-name">${medal} ${n}</span>
+      <span class="player-score">${s}分</span>
+    </div>`;
+  }).join('');
+}
+
+function addChat(text, cls = "") {
+  const chat = document.getElementById("chat");
+  const div = document.createElement("div");
+  div.className = "chat-msg " + cls;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function sendEmoji(e) {
+  if (!myRoom) return;
+  sendEvent("emoji", { emoji: e, name: myName });
+}
+function showEmoji(e) {
+  const div = document.createElement("div");
+  div.className = "float-emoji";
+  div.textContent = e;
+  div.style.left = (20 + Math.random() * 60) + "vw";
+  div.style.bottom = "80px";
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 2000);
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerVal = 60;
+  document.getElementById("timer").textContent = timerVal + "秒";
+  timerInterval = setInterval(() => {
+    timerVal--;
+    document.getElementById("timer").textContent = timerVal + "秒";
+    if (timerVal <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById("timer").textContent = "时间到！";
+      roundActive = false;
+      if (isDrawer) {
+        addChat(`⏰ 时间到！答案是：${currentWord}`, "system");
+        sendEvent("chat", { text: `⏰ 时间到！答案是「${currentWord}」` });
+        setTimeout(() => autoNextRound(), 3000);
+      }
+    }
+  }, 1000);
+}
+
+async function sendEvent(type, data) {
+  if (!myRoom) return;
+  await sb.from("game_events").insert({ room: myRoom, type, data });
+}
+
+const bg = document.getElementById("bg");
+const bgctx = bg.getContext("2d");
+bg.width = innerWidth; bg.height = innerHeight;
+const particles = Array.from({ length:80 }, () => ({
+  x: Math.random()*innerWidth, y: Math.random()*innerHeight,
+  r: Math.random()*2+0.5, dx:(Math.random()-0.5)*0.6, dy:(Math.random()-0.5)*0.6
+}));
+function animateBg() {
+  bgctx.clearRect(0,0,bg.width,bg.height);
+  particles.forEach(p => {
+    p.x+=p.dx; p.y+=p.dy;
+    if(p.x<0||p.x>innerWidth) p.dx*=-1;
+    if(p.y<0||p.y>innerHeight) p.dy*=-1;
+    bgctx.beginPath(); bgctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    bgctx.fillStyle="rgba(0,247,255,0.5)"; bgctx.fill();
+  });
+  requestAnimationFrame(animateBg);
+}
+animateBg();
+
+ctx.fillStyle = "white";
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+updateButtonStates();
+</script>
+</body>
+</html>
