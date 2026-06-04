@@ -1,4 +1,3 @@
-// 根据日期计算今天学哪10个词
 function getTodayWords() {
   const start = new Date('2025-01-01');
   const today = new Date();
@@ -11,76 +10,61 @@ function getTodayWords() {
   return result;
 }
 
-let idx = 0;
-let accent = 'us'; // 'us' 或 'uk'
-const todayList = getTodayWords();
-
-function showWord() {
-  const w = todayList[idx];
-  document.getElementById('word').textContent = w.en;
-  document.getElementById('translation').textContent = w.zh;
-  document.getElementById('progress').textContent = (idx + 1) + ' / 10';
+function getStreak() {
+  const key = 'streak_data';
+  const today = new Date().toDateString();
+  const raw = localStorage.getItem(key);
+  const data = raw ? JSON.parse(raw) : { count: 0, lastDate: '' };
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (data.lastDate === today) return data.count;
+  if (data.lastDate === yesterday) {
+    data.count += 1;
+  } else {
+    data.count = 1;
+  }
+  data.lastDate = today;
+  localStorage.setItem(key, JSON.stringify(data));
+  return data.count;
 }
 
-function speakWord() {
+let idx = 0;
+const todayList = getTodayWords();
+const streak = getStreak();
+
+function showWord() {
+  if (idx >= 10) {
+    document.getElementById('wordCard').style.display = 'none';
+    document.getElementById('doneMsg').style.display = 'block';
+    return;
+  }
   const w = todayList[idx];
-  const utter = new SpeechSynthesisUtterance(w.en);
-  utter.lang = accent === 'us' ? 'en-US' : 'en-GB';
+  document.getElementById('word').textContent = w.en;
+  document.getElementById('phonetic').textContent = w.phonetic || '';
+  document.getElementById('translation').textContent = w.zh;
+  document.getElementById('progress').textContent = '第 ' + (Math.floor((new Date() - new Date('2025-01-01')) / 86400000) + 1) + ' 天 · ' + (idx + 1) + '/10';
+  document.getElementById('streak').textContent = '🔥 连续 ' + streak + ' 天';
+}
+
+function speakUS() {
+  const utter = new SpeechSynthesisUtterance(todayList[idx].en);
+  utter.lang = 'en-US';
   speechSynthesis.cancel();
   speechSynthesis.speak(utter);
 }
 
-function toggleAccent() {
-  accent = accent === 'us' ? 'uk' : 'us';
-  document.getElementById('accentBtn').textContent = accent === 'us' ? '🇺🇸 美式' : '🇬🇧 英式';
-  speakWord();
+function speakUK() {
+  const utter = new SpeechSynthesisUtterance(todayList[idx].en);
+  utter.lang = 'en-GB';
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
 }
 
 function markKnown() {
-  idx = (idx + 1) % 10;
+  idx++;
   showWord();
 }
 
 function markUnknown() {
-  idx = (idx + 1) % 10;
+  idx++;
   showWord();
 }
-
-async function login() {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value.trim();
-  if (!email || !password) { alert('请输入邮箱和密码'); return; }
-
-  const { error } = await window._supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    if (error.message.includes('Invalid login credentials')) {
-      const { error: signUpError } = await window._supabase.auth.signUp({ email, password });
-      if (signUpError) {
-        if (signUpError.message.includes('already registered')) {
-          alert('该邮箱已注册，请检查密码是否正确');
-        } else {
-          alert('失败: ' + signUpError.message);
-        }
-      } else {
-        alert('✅ 注册成功，已自动登录');
-      }
-    } else {
-      alert('失败: ' + error.message);
-    }
-  }
-}
-
-async function logout() {
-  await window._supabase.auth.signOut();
-}
-
-window._supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    showWord();
-  } else {
-    document.getElementById('login').style.display = 'block';
-    document.getElementById('app').style.display = 'none';
-  }
-});
