@@ -2,20 +2,14 @@
 <html><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>English App</title>
-  <link rel="manifest" href="manifest.json">
+  <title>每日英语</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase.js"></script>
 </head><body>
 <div class="container">
-  <h1>English App</h1>
-  <p class="subtitle">每日10词学习</p>
-
-  <div id="login">
-    <input id="email" type="email" placeholder="邮箱">
-    <input id="password" type="password" placeholder="密码">
-    <button onclick="login()">登录 / 注册</button>
-  </div>
+  <a href="../index.html" class="back">← 返回首页</a>
+  <h1>每日英语</h1>
 
   <div id="app" style="display:none">
     <p id="progress" class="progress"></p>
@@ -29,16 +23,20 @@
       <button class="known" onclick="markKnown()">✅ 我会</button>
       <button class="unknown" onclick="markUnknown()">❌ 不会</button>
     </div>
-    <button class="logout" onclick="logout()">退出登录</button>
   </div>
 </div>
 
 <script src="words.js"></script>
-<script src="supabase.js"></script>
 <script src="app.js"></script>
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js');
-  }
+  // 检查登录状态，未登录跳回主页
+  window._supabase.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      document.getElementById('app').style.display = 'block';
+      showWord();
+    } else {
+      window.location.href = '../index.html';
+    }
+  });
 </script>
 </body></html>
