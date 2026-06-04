@@ -1,9 +1,50 @@
+// 根据日期计算今天学哪10个词
+function getTodayWords() {
+  const start = new Date('2025-01-01');
+  const today = new Date();
+  const diffDays = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  const startIdx = (diffDays * 10) % WORDS.length;
+  const result = [];
+  for (let i = 0; i < 10; i++) {
+    result.push(WORDS[(startIdx + i) % WORDS.length]);
+  }
+  return result;
+}
+
 let idx = 0;
-function todayWords() { return WORDS.slice(0, 10); }
-function showWord() { document.getElementById('word').textContent = todayWords()[idx]; }
-function speakWord() { speechSynthesis.speak(new SpeechSynthesisUtterance(todayWords()[idx])); }
-function markKnown()   { idx = (idx + 1) % 10; showWord(); }
-function markUnknown() { idx = (idx + 1) % 10; showWord(); }
+let accent = 'us'; // 'us' 或 'uk'
+const todayList = getTodayWords();
+
+function showWord() {
+  const w = todayList[idx];
+  document.getElementById('word').textContent = w.en;
+  document.getElementById('translation').textContent = w.zh;
+  document.getElementById('progress').textContent = (idx + 1) + ' / 10';
+}
+
+function speakWord() {
+  const w = todayList[idx];
+  const utter = new SpeechSynthesisUtterance(w.en);
+  utter.lang = accent === 'us' ? 'en-US' : 'en-GB';
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+function toggleAccent() {
+  accent = accent === 'us' ? 'uk' : 'us';
+  document.getElementById('accentBtn').textContent = accent === 'us' ? '🇺🇸 美式' : '🇬🇧 英式';
+  speakWord();
+}
+
+function markKnown() {
+  idx = (idx + 1) % 10;
+  showWord();
+}
+
+function markUnknown() {
+  idx = (idx + 1) % 10;
+  showWord();
+}
 
 async function login() {
   const email = document.getElementById('email').value.trim();
@@ -13,7 +54,6 @@ async function login() {
   const { error } = await window._supabase.auth.signInWithPassword({ email, password });
   if (error) {
     if (error.message.includes('Invalid login credentials')) {
-      // 登录失败，尝试注册新账号
       const { error: signUpError } = await window._supabase.auth.signUp({ email, password });
       if (signUpError) {
         if (signUpError.message.includes('already registered')) {
@@ -29,6 +69,7 @@ async function login() {
     }
   }
 }
+
 async function logout() {
   await window._supabase.auth.signOut();
 }
