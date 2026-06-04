@@ -9,7 +9,7 @@
 </head><body>
 <div class="container">
   <h1>English App</h1>
-  <p>每日10词学习</p>
+  <p class="subtitle">每日10词学习</p>
 
   <div id="login">
     <input id="email" type="email" placeholder="邮箱">
@@ -18,12 +18,18 @@
   </div>
 
   <div id="app" style="display:none">
+    <p id="progress" class="progress"></p>
     <h2 id="word"></h2>
-    <button onclick="speakWord()">🔊 发音</button>
-    <button onclick="markKnown()">✅ 我会</button>
-    <button onclick="markUnknown()">❌ 不会</button>
-    <br>
-    <button onclick="logout()" style="margin-top:20px;background:#555">退出登录</button>
+    <p id="translation" class="translation"></p>
+    <div class="btn-row">
+      <button onclick="speakWord()">🔊 发音</button>
+      <button id="accentBtn" onclick="toggleAccent()">🇺🇸 美式</button>
+    </div>
+    <div class="btn-row">
+      <button class="known" onclick="markKnown()">✅ 我会</button>
+      <button class="unknown" onclick="markUnknown()">❌ 不会</button>
+    </div>
+    <button class="logout" onclick="logout()">退出登录</button>
   </div>
 </div>
 
